@@ -1,0 +1,40 @@
+{
+  "name": "TriangularArbitrage",
+  "version": "0.2.0",
+  "description": "Monitor multiple currencies in a single exchange via websockets to detect triangular arbitrage opportunities.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "lib": "lib"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo 'test logic not done yet'",
+    "lint": "eslint .",
+    "debug": "node --inspect index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tiagosiebler/TriangularArbitrage.git"
+  },
+  "author": "Tiago Siebler",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tiagosiebler/TriangularArbitrage/issues"
+  },
+  "homepage": "https://github.com/tiagosiebler/TriangularArbitrage#readme",
+  "dependencies": {
+    "binance": "https://github.com/tiagosiebler/binance/tarball/master",
+    "clui": "^0.3.6",
+    "fs": "0.0.1-security",
+    "moment": "^2.22.2",
+    "mongodb": "^3.0.1",
+    "node-env-file": "^0.1.8",
+    "numbers": "^0.6.0",
+    "sosa_mongo": "^1.0.3",
+    "winston": "^3.0.0-rc1"
+  },
+  "devDependencies": {
+    "eslint": "^4.15.0"
+  }
+}
