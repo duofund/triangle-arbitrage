@@ -27,7 +27,7 @@ function getPortfolio () {
     });
 }
 
-const symbol = 'EOSETH'
+const symbol = 'BNBETH'
 
 exchangeAPI.tickerPrice(symbol).then(data => {
     console.log('data:', data);
@@ -52,7 +52,7 @@ function newOrder (symbol, price) {
         side: 'BUY',
         type: 'limit',
         price,
-        quantity: 1,
+        quantity: '0.5',
         timeInForce: 'IOC'
     }, callback);
 }
@@ -60,10 +60,10 @@ function newOrder (symbol, price) {
 exchangeAPI.bookTicker(symbol).then(data => {
     console.log('[bookTicker] data:', data);
 
-    const price = data.bidPrice; // data.askPrice; // utils.floatSub(parseFloat(data.askPrice), 0.002)
+    const price = data.askPrice; // utils.floatSub(parseFloat(data.askPrice), 0.002)
     console.log('price:', price, 'ask price:', data.askPrice);
 
-    newOrder(symbol, price);
+    newOrder(symbol, '0.02200000');
 });
 
 

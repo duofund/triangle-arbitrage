@@ -9,9 +9,10 @@
   },
   "scripts": {
     "start": "node index.js",
-    "test": "echo 'test logic not done yet'",
+    "dev": "node --inspect index.js",
+    "debug": "node --inspect index.js",
     "lint": "eslint .",
-    "debug": "node --inspect index.js"
+    "test": "echo 'test logic not done yet'"
   },
   "repository": {
     "type": "git",
