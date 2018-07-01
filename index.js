@@ -45,9 +45,9 @@ var botOptions = {
     trading: {
       paperOnly: true,
       // only candidates with over x% gain potential are queued for trading
-      minQueuePercentageThreshold: 4,
+      minQueuePercentageThreshold: 5,
       // how many times we need to see the same opportunity before deciding to act on it
-      minHitsThreshold: 5
+      minHitsThreshold: 2
     }
   },
   ctrl = {
