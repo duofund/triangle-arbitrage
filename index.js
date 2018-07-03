@@ -45,7 +45,7 @@ var botOptions = {
     trading: {
       paperOnly: true,
       // only candidates with over x% gain potential are queued for trading
-      minQueuePercentageThreshold: 3.5,
+      minQueuePercentageThreshold: 2.8,
       // how many times we need to see the same opportunity before deciding to act on it
       minHitsThreshold: 2,
       mainCoinQuantityLimit: 0.1,
