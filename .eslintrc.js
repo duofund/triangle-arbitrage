@@ -21,10 +21,7 @@ module.exports = {
       "error",
       "single"
     ],
-    "semi": [
-      "error",
-      "always"
-    ],
+    "semi": 0,
     "new-cap": "off",
     "no-console": "off",
     "no-mixed-spaces-and-tabs": 2,
