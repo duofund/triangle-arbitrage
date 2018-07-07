@@ -45,10 +45,10 @@ var botOptions = {
     trading: {
       paperOnly: false,
       // only candidates with over x% gain potential are queued for trading
-      minQueuePercentageThreshold: 0.01,
+      minQueuePercentageThreshold: 0.0005,
       // how many times we need to see the same opportunity before deciding to act on it
       minHitsThreshold: 1,
-      mainCoinQuantityLimit: 0.1,
+      mainCoinQuantityLimit: 3,
       percentageOfFee: 0.05
     }
   },
@@ -68,6 +68,19 @@ var botOptions = {
     logger: logger,
     exchange: exchangeAPI
   };
+
+ctrl.exchange.exchangeInfo().then(data => {
+  const miniQuantity = {}
+
+  data.symbols.map(sym => {
+      miniQuantity[sym.symbol] = parseFloat(sym.filters.filter(d => d.filterType === 'MIN_NOTIONAL')[0].minNotional)
+  })
+
+  ctrl.miniQuantity = miniQuantity
+
+  ctrl.exchange.startTimeSync(1000)
+})
+
 
 // load DBCore, then start streams once DB is up and connected
 require('./lib/DBCore')(logger, (err, db)=>{
