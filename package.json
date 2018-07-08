@@ -2,6 +2,8 @@
   "name": "TriangularArbitrage",
   "version": "0.2.0",
   "description": "Monitor multiple currencies in a single exchange via websockets to detect triangular arbitrage opportunities.",
+  "devtoolsFrontendUrl": "chrome-devtools://devtools/bundled/inspector.html?experiments=true&v8only=true&ws=0.0.0.0:9229/0f2c936f-b1cd-4ac9-aab3-f63b0f33d55e",
+  "webSocketDebuggerUrl": "ws://0.0.0.0:9229/0f2c936f-b1cd-4ac9-aab3-f63b0f33d55e",
   "main": "index.js",
   "directories": {
     "doc": "docs",
