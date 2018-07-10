@@ -48,7 +48,7 @@ var botOptions = {
       minQueuePercentageThreshold: 0.21,
       // how many times we need to see the same opportunity before deciding to act on it
       minHitsThreshold: 1,
-      mainCoinQuantityLimit: 2,
+      mainCoinQuantityLimit: 3,
       percentageOfFee: 0.05,
       tradeTime: 2
     }
