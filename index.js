@@ -50,6 +50,7 @@ var botOptions = {
       minHitsThreshold: 1,
       mainCoinQuantityLimit: 3,
       percentageOfFee: 0.05,
+      percentageOfBestQuantity: 0.8,
       tradeTime: 2
     }
   },
