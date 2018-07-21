@@ -36,7 +36,6 @@
     "node-env-file": "^0.1.8",
     "numbers": "^0.6.0",
     "sosa_mongo": "^1.0.3",
-    "webworker-threads": "^0.7.16",
     "winston": "^3.0.0-rc1"
   },
   "devDependencies": {
