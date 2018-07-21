@@ -7,7 +7,7 @@ const env = require('node-env-file')
 env(__dirname + '/.keys')
 env(__dirname + '/conf.ini')
 
-const exchangeAPI = {}
+let exchangeAPI = {}
 const exchangeName = process.env.activeExchange
 
 if (!process.env.binance_key || !process.env.binance_secret) {
@@ -15,12 +15,12 @@ if (!process.env.binance_key || !process.env.binance_secret) {
 }
 
 logger.info('\n\n\n----- Bot Starting : -----\n\n\n')
-logger.info(`--- Loading Exchange API `)
+logger.info('--- Loading Exchange API ')
 logger.info('--- \tActive Exchange:' + process.env.activeExchange)
 
 
-const exchangeAPI = getattr(ccxt, exchangeName)({
-    'verbose': true,
+exchangeAPI = new ccxt[exchangeName]({
+    'verbose': false,
     'apiKey': process.env[`${exchangeName}_key`],
     'secret': process.env[`${exchangeName}_secret`],
     timeout: parseInt(process.env.restTimeout), // Optional, defaults to 15000, is the request time out in milliseconds
@@ -75,15 +75,14 @@ const ctrl = {
 }
 
 function getMiniQuantity () {
-    ctrl.exchange.exchangeInfo().then(data => {
+    ctrl.exchange.loadMarkets().then(markets => {
         const miniQuantity = {}
 
-        data.symbols.map(sym => {
-            miniQuantity[sym.symbol] = parseFloat(sym.filters.filter(d => d.filterType === 'LOT_SIZE')[0].minQty)
-        })
+        for (let symbol in markets) {
+            miniQuantity[symbol] = markets[symbol].limits.amount.min
+        }
 
         ctrl.miniQuantity = miniQuantity
-        ctrl.exchange.startTimeSync(1000)
     }).catch(e => {
       console.log('[Mini Quantity] Error', e)
       getMiniQuantity()
