@@ -32,6 +32,12 @@ if (exchangeName == 'binance') {
     exchangeAPI.WS = new binanceApi.BinanceWS()
 }
 
+setTimeout(() => {
+    console.log('exchangeAPI.WS:', exchangeAPI.WS)
+
+    setTimeout(() => {}, 100 * 1000)
+}, 1000)
+
 const botOptions = {
     UI: {
         title: 'Top Potential Arbitrage Triplets, via: ' + process.env.binanceColumns
