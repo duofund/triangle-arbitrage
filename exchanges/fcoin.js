@@ -1,131 +1,115 @@
-const WebSocketClient = require('websocket').client;
+const WebSocket = require('ws')
 const request = require('request')
-const ccxt = require('ccxt')
-const path = require('path')
-const EventEmitter = require('events');
-const env = require('node-env-file')
-env(path.join(__dirname, '../.keys'))
-env(path.join(__dirname, '../conf.ini'))
-
-const WS_URL = 'wss://api.fcoin.com/v2/ws';
-const api_URL = 'https://api.fcoin.com/v2/market';
+const Exchange = require('./base/Exchange')
+const Ticker = require('./base/Ticker')
 
 const exchangeAPI = {}
-const exchangeName = process.env.activeExchange
 
-class FCoin extends EventEmitter {
-    constructor () {
-        super()
-        this.wsTopics = []
+module.exports = class FCoin extends Exchange {
+    async constructor () {
+        await super()
 
-        const exchange = new ccxt[exchangeName]({
-            'verbose': true,
-            'apiKey': process.env[`${exchangeName}_key`],
-            'secret': process.env[`${exchangeName}_secret`],
-            timeout: parseInt(process.env.restTimeout), // Optional, defaults to 15000, is the request time out in milliseconds
-            recvWindow: parseInt(process.env.restRecvWindow), // Optional, defaults to 5000, increase if you're getting timestamp errors
-            disableBeautification: process.env.restBeautify != 'true'
+        const _wsTopics = {}
+
+        this.WS_URL = 'wss://api.fcoin.com/v2/ws';
+        this.API_URL = 'https://api.fcoin.com/v2/market';
+
+        this.wsConnect = null
+
+        this._generateLocalSymbolDict()
+    }
+
+    _generateLocalSymbolDict () {
+        this.symbols.map(symbol => {
+            const local = symbol.split('/').join('')
+            this.localCommonSymbolsDict[local] = symbol
+            this.commonLocalSymbolsDict[symbol] = local
+        })
+    }
+
+    _formatTicker (symbol, ticker) {
+        return Ticker(ticker[5], ticker[3], ticker[2], ticker[4], symbol, new Date().getTime())
+    }
+
+    startWebSocket () {
+        this.ws = new WebSocket(this.WS_URL)
+
+        this.ws.on('connect', conn => {
+            this.wsConnect = conn
         })
 
-        exchange.fetchMarkets().then(res => {
-            console.log('res:', res)
-            const symbols = []
-            res.map(re => {
-                symbols.push(re.symbol.split('/').join('').toLowerCase())
-            })
+        this.ws.on('message', message => {
+            let data = JSON.parse(message.utf8Data);
+            let type = data.type
 
-            this.connectWebSocket(symbols)
+            if (/^ticker\./.test(type)) {
+                let symbol = type.split('.')[1];
+                let commonSymbol = this.localCommonSymbolsDict[symbol]
+                this.streams[commonSymbol] = this._formatTicker(commonSymbol, data.ticker)
+                console.log('this.streams[commonSymbol]:', this.streams[commonSymbol])
+
+                callback(this.streams)
+            } else if (/^depth\./.test(type)) {
+                console.log('depth:', data)
+                let symbol = type.split('.')[2];
+                this.emit('depth', {
+                    symbol,
+                    depth: {
+                        asks: data.asks,
+                        bids: data.bids
+                    }
+                });
+            } else if (/^trade\./.test(type)) {
+                console.log('trade:', data)
+                let symbol = type.split('.')[1];
+                this.emit('trade', {
+                    symbol,
+                    ts: data.ts,
+                    trade: {
+                        id: data.id,
+                        side: data.side,
+                        price: data.price,
+                        amount: data.amount
+                    }
+                })
+            }
+        })
+
+        this.ws.on('close', function () {
+            console.log('close')
+            this.wsConn = null;
+            this.ws && setTimeout(() => this.ws.connect(WS_URL), 10000);
+        })
+
+        this.ws.on('error', () => {})
+    }
+
+    async startAllTickerStream (callback) {
+        console.log('[connectWebSocket] wsTopics:', wsTopics)
+        this.callbacks.tickers = callback
+        await this.startWebSocket()
+
+        this.symbols.map(topic => {
+            this.subscribe(`ticker.${topic}`)
         })
     }
 
     subscribe (topic) {
-        this.wsTopics[topic] = new Date();
-        if (this.wsConn) {
-            this.wsConn.send(JSON.stringify({
-                cmd: 'sub',
-                args: [topic]
-            }));
-        }
+        if (!this.wsConn) return
+
+        this.wsConn.send(JSON.stringify({
+            cmd: 'sub',
+            args: [topic]
+        }));
     }
 
     unSubscribe (topic) {
-        delete this.wsTopics[topic];
-        if (this.wsConn) {
-            this.wsConn.send(JSON.stringify({
-                cmd: 'unsub',
-                args: [topic]
-            }));
-        }
-    }
+        if (!this.wsConn) return
 
-    connectWebSocket (wsTopics) {
-        console.log('[connectWebSocket] wsTopics:', wsTopics)
-
-        this.ws = new WebSocketClient()
-        this.wsTopics = {}
-        this.wsConn = null
-        this.ws.on('connectFailed', () => {
-            console.log('connectFailed')
-            this.wsconn = null;
-            setTimeout(() => this.ws.connect(WS_URL), 10000);
-        })
-
-        this.ws.on('connect', conn => {
-            this.wsConn = conn;
-
-            wsTopics.map(topic => {
-                this.subscribe(`ticker.${topic}`)
-            })
-
-            conn.on('message', message => {
-                let data = JSON.parse(message.utf8Data);
-
-                console.log('[message] data:', data)
-
-                let type = data.type
-
-                if (/^ticker\./.test(type)) {
-                    console.log('ticker:', data)
-                    let symbol = type.split('.')[1];
-                    this.emit('ticker', {
-                        symbol,
-                        ticker: data.ticker
-                    });
-                } else if (/^depth\./.test(type)) {
-                    console.log('depth:', data)
-                    let symbol = type.split('.')[2];
-                    this.emit('depth', {
-                        symbol,
-                        depth: {
-                            asks: data.asks,
-                            bids: data.bids
-                        }
-                    });
-                } else if (/^trade\./.test(type)) {
-                    console.log('trade:', data)
-                    let symbol = type.split('.')[1];
-                    this.emit('trade', {
-                        symbol,
-                        ts: data.ts,
-                        trade: {
-                            id: data.id,
-                            side: data.side,
-                            price: data.price,
-                            amount: data.amount
-                        }
-                    })
-                }
-            })
-            conn.on('close', function () {
-                console.log('close')
-                this.wsConn = null;
-                this.ws && setTimeout(() => this.ws.connect(WS_URL), 10000);
-            })
-
-            conn.on('error', () => {
-            })
-        })
-        this.ws.connect(WS_URL)
+        this.wsConn.send(JSON.stringify({
+            cmd: 'unsub',
+            args: [topic]
+        }));
     }
 }
 
