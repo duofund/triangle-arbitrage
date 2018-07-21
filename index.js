@@ -79,8 +79,7 @@ function getMiniQuantity () {
         const miniQuantity = {}
 
         for (let symbol in markets) {
-            const min = markets[symbol].limits.amount.min
-            miniQuantity[symbol] = min.split('/').join('')
+            miniQuantity[symbol.split('/').join('')] = markets[symbol].limits.amount.min
         }
 
         ctrl.miniQuantity = miniQuantity
