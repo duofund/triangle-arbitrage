@@ -8,7 +8,7 @@ env(path.join(__dirname, '../../conf.ini'))
 const exchangeName = process.env.activeExchange
 
 module.exports = class Exchange {
-    async constructor () {
+    constructor () {
         this.WS_URL = ''
         this.API_URL = ''
 
@@ -30,15 +30,17 @@ module.exports = class Exchange {
         this.commonLocalSymbolsDict = {}
 
         this.apis = new ccxt[exchangeName]({
-            'verbose': true,
+            'verbose': false,
             'apiKey': process.env[`${exchangeName}_key`],
             'secret': process.env[`${exchangeName}_secret`],
             timeout: parseInt(process.env.restTimeout), // Optional, defaults to 15000, is the request time out in milliseconds
             recvWindow: parseInt(process.env.restRecvWindow), // Optional, defaults to 5000, increase if you're getting timestamp errors
             disableBeautification: process.env.restBeautify != 'true'
         })
+    }
 
-        this.markets = await exchange.fetchMarkets()
+    async init() {
+        this.markets = await this.apis.fetchMarkets()
 
         this.loadAllSymbols()
         this.loadMiniAmounts()
@@ -47,16 +49,18 @@ module.exports = class Exchange {
     loadMiniAmounts () {
         const miniAmounts = {}
 
-        for (let symbol in this.markets) {
-            miniAmounts[symbol.split('/').join('')] = markets[symbol].limits.amount.min
-        }
-
+        this.markets.map(market => {
+            const symbol = market.symbol
+            miniAmounts[symbol] = market.limits.amount ? market.limits.amount.min : 1
+        })
         this.miniAmounts = miniAmounts
     }
 
     loadAllSymbols () {
+        const symbols = []
+
         this.markets.map(re => {
-            symbols.push(re.symbol.split('/').join('').toLowerCase())
+            symbols.push(re.symbol) // .split('/').join('').toLowerCase())
         })
 
         this.symbols = symbols

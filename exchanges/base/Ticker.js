@@ -27,7 +27,7 @@ const Ticker = {
     // x: '0.06202900'
 }
 
-module.exports = function (A, B, a, b, s) {
+module.exports = function (A, B, a, b, s, E) {
     return { ...Ticker, A, B, a, b, s, E }
 }
 
