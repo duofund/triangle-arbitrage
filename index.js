@@ -1,113 +1,110 @@
-// load logger library
-const logger = require('./lib/LoggerCore')
-const ccxt = require('ccxt')
-const binanceApi = require('binance')
-
 const env = require('node-env-file')
 env(__dirname + '/.keys')
 env(__dirname + '/conf.ini')
 
-let exchangeAPI = {}
 const exchangeName = process.env.activeExchange
 
-if (!process.env.binance_key || !process.env.binance_secret) {
+if (!process.env[`${exchangeName}_key`] || !process.env[`${exchangeName}_secret`]) {
     throw 'Error: Specify your binance API settings in a file called ".keys". The .keys-template can be used as a template for how the .keys file should look.'
+}
+
+const logger = require('./lib/LoggerCore')
+const DBCore = require('./lib/DBCore')
+const BotCore = require('./lib/BotCore')
+const EventsCore = require('./lib/EventsCore')
+const UI = require('./lib/UI')
+const Exchange = require(`./exchanges/${exchangeName}`)
+
+let ctrl = null
+let botOptions = null
+
+async function init() {
+    console.log('before init exchange')
+
+    const exchange = new Exchange()
+
+    console.log('exchange obj:', exchange)
+
+    try {
+        await exchange.init()
+    } catch (e) {
+        console.error('what happened:', e)
+    }
+
+    console.log('after init exchange')
+
+    botOptions = {
+        UI: {
+            title: 'Top Potential Arbitrage Triplets, via: ' + process.env.binanceColumns
+        },
+        arbitrage: {
+            paths: process.env.binanceColumns.split(','),
+            start: process.env.startCoin,
+            mainMarkets: process.env.mainMarkets.split(',')
+        },
+        storage: {
+            logHistory: false
+        },
+        trading: {
+            paperOnly: false,
+            minQueuePercentageThreshold: 0.19,
+            minHitsThreshold: 1,
+            mainCoinQuantityLimit: process.env.mainCoinQuantityLimit,
+            percentageOfFee: 0.05,
+            percentageOfBestQuantity: 0.8,
+            tradeTime: 2
+        }
+    }
+
+    ctrl = {
+        options: botOptions,
+        storage: {
+            trading: {
+                queue: [],
+                active: []
+            },
+            candidates: [],
+            streams: [],
+            pairRanks: []
+        },
+        logger: logger,
+        exchange,
+        miniQuantity: exchange.miniAmounts
+    }
+
+    console.log('ctrl:', ctrl)
+
+
+    const {err, db} = await DBCore(logger)
+
+    if (process.env.useMongo == 'true') {
+        ctrl.storage.db = db
+        ctrl.options.storage.logHistory = true
+    }
+
+    if (err) {
+        ctrl.logger.error('MongoDB connection unavailable, history logging disabled: ' + err)
+        ctrl.options.storage.logHistory = false
+    }
+
+    ctrl.UI = UI(ctrl.options),
+    ctrl.events = EventsCore(ctrl)
+
+    BotCore(ctrl)
+
 }
 
 logger.info('\n\n\n----- Bot Starting : -----\n\n\n')
 logger.info('--- Loading Exchange API ')
 logger.info('--- \tActive Exchange:' + process.env.activeExchange)
 
+console.log('init before')
 
-exchangeAPI = new ccxt[exchangeName]({
-    'verbose': false,
-    'apiKey': process.env[`${exchangeName}_key`],
-    'secret': process.env[`${exchangeName}_secret`],
-    timeout: parseInt(process.env.restTimeout), // Optional, defaults to 15000, is the request time out in milliseconds
-    recvWindow: parseInt(process.env.restRecvWindow), // Optional, defaults to 5000, increase if you're getting timestamp errors
-    disableBeautification: process.env.restBeautify != 'true'
-})
 
-if (exchangeName == 'binance') {
-    exchangeAPI.WS = new binanceApi.BinanceWS()
-}
+init().then(() => {
+    console.log('init after')
 
-const botOptions = {
-    UI: {
-        title: 'Top Potential Arbitrage Triplets, via: ' + process.env.binanceColumns
-    },
-    arbitrage: {
-        paths: process.env.binanceColumns.split(','),
-        start: process.env.binanceStartingPoint
-    },
-    storage: {
-        logHistory: false
-    },
-    trading: {
-        paperOnly: false,
-        // only candidates with over x% gain potential are queued for trading
-        // minQueuePercentageThreshold: 0.3,
-        minQueuePercentageThreshold: 0.19,
-        // how many times we need to see the same opportunity before deciding to act on it
-        minHitsThreshold: 1,
-        mainCoinQuantityLimit: process.env.mainCoinQuantityLimit,
-        percentageOfFee: 0.05,
-        percentageOfBestQuantity: 0.8,
-        tradeTime: 2
-    }
-}
-
-const ctrl = {
-    options: botOptions,
-    storage: {
-        trading: {
-        // queued triplets
-        queue: [],
-        // actively trading triplets
-        active: []
-        },
-        candidates: [],
-        streams: [],
-        pairRanks: []
-    },
-    logger: logger,
-    exchange: exchangeAPI
-}
-
-function getMiniQuantity () {
-    ctrl.exchange.loadMarkets().then(markets => {
-        const miniQuantity = {}
-
-        for (let symbol in markets) {
-            miniQuantity[symbol.split('/').join('')] = markets[symbol].limits.amount.min
-        }
-
-        ctrl.miniQuantity = miniQuantity
-    }).catch(e => {
-      console.log('[Mini Quantity] Error', e)
-      getMiniQuantity()
-    })
-}
-
-getMiniQuantity()
-
-// load DBCore, then start streams once DB is up and connected
-require('./lib/DBCore')(logger, (err, db)=>{
-    if (process.env.useMongo == 'true'){
-        ctrl.storage.db = db
-        ctrl.options.storage.logHistory = true
-    }
-
-    if (err){
-        ctrl.logger.error('MongoDB connection unavailable, history logging disabled: ' + err)
-        ctrl.options.storage.logHistory = false
-    }
-
-    ctrl.UI       = require('./lib/UI')(ctrl.options),
-    ctrl.events   = require('./lib/EventsCore')(ctrl)
-
-    // We're ready to start. Load up the webhook streams and start making it rain.
-    require('./lib/BotCore')(ctrl)
-
-    ctrl.logger.info('----- Bot Startup Finished -----')
+    logger.info('----- Bot Startup Finished -----')
+}).catch(e => {
+    logger.error('----- Bot Startup ERROR -----:', e)
 })
