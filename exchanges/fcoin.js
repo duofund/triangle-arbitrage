@@ -6,22 +6,26 @@ const Ticker = require('./base/Ticker')
 const exchangeAPI = {}
 
 module.exports = class FCoin extends Exchange {
-    async constructor () {
-        await super()
+    constructor () {
+        super()
 
-        const _wsTopics = {}
+        this._wsTopics = {}
 
         this.WS_URL = 'wss://api.fcoin.com/v2/ws';
         this.API_URL = 'https://api.fcoin.com/v2/market';
 
         this.wsConnect = null
+        this.callbackTickerTime = 0
+    }
 
+    async init() {
+        await super.init()
         this._generateLocalSymbolDict()
     }
 
     _generateLocalSymbolDict () {
         this.symbols.map(symbol => {
-            const local = symbol.split('/').join('')
+            const local = symbol.split('/').join('').toLowerCase()
             this.localCommonSymbolsDict[local] = symbol
             this.commonLocalSymbolsDict[symbol] = local
         })
@@ -34,44 +38,43 @@ module.exports = class FCoin extends Exchange {
     startWebSocket () {
         this.ws = new WebSocket(this.WS_URL)
 
-        this.ws.on('connect', conn => {
+        this.ws.on('open', conn => {
+            console.log('on ws open:', conn)
             this.wsConnect = conn
+
+            this.symbols.map(topic => {
+                this.subscribe(`ticker.${this.commonLocalSymbolsDict[topic]}`)
+            })
         })
 
         this.ws.on('message', message => {
-            let data = JSON.parse(message.utf8Data);
+            let data = JSON.parse(message);
             let type = data.type
 
             if (/^ticker\./.test(type)) {
                 let symbol = type.split('.')[1];
                 let commonSymbol = this.localCommonSymbolsDict[symbol]
                 this.streams[commonSymbol] = this._formatTicker(commonSymbol, data.ticker)
-                console.log('this.streams[commonSymbol]:', this.streams[commonSymbol])
 
-                callback(this.streams)
+                const res = []
+
+                for (let symbol in this.streams) {
+                    res.push(this.streams[symbol])
+                }
+
+                if (this.callbackTickerTime < 20) {
+                    this.callbackTickerTime++
+                    return
+                }
+
+                this.callbackTickerTime = 0
+                this.callbacks.tickers(res)
             } else if (/^depth\./.test(type)) {
                 console.log('depth:', data)
-                let symbol = type.split('.')[2];
-                this.emit('depth', {
-                    symbol,
-                    depth: {
-                        asks: data.asks,
-                        bids: data.bids
-                    }
-                });
+                this.callbacks.depths(this.streams)
             } else if (/^trade\./.test(type)) {
                 console.log('trade:', data)
-                let symbol = type.split('.')[1];
-                this.emit('trade', {
-                    symbol,
-                    ts: data.ts,
-                    trade: {
-                        id: data.id,
-                        side: data.side,
-                        price: data.price,
-                        amount: data.amount
-                    }
-                })
+                this.callbacks.trades(this.streams)
             }
         })
 
@@ -85,34 +88,25 @@ module.exports = class FCoin extends Exchange {
     }
 
     async startAllTickerStream (callback) {
-        console.log('[connectWebSocket] wsTopics:', wsTopics)
         this.callbacks.tickers = callback
         await this.startWebSocket()
-
-        this.symbols.map(topic => {
-            this.subscribe(`ticker.${topic}`)
-        })
     }
 
     subscribe (topic) {
-        if (!this.wsConn) return
+        if (!this.ws) return
 
-        this.wsConn.send(JSON.stringify({
+        this.ws.send(JSON.stringify({
             cmd: 'sub',
             args: [topic]
         }));
     }
 
     unSubscribe (topic) {
-        if (!this.wsConn) return
+        if (!this.ws) return
 
-        this.wsConn.send(JSON.stringify({
+        this.ws.send(JSON.stringify({
             cmd: 'unsub',
             args: [topic]
         }));
     }
 }
-
-// start
-const fCoin = new FCoin()
-setTimeout(() => {}, 100 * 10000)
