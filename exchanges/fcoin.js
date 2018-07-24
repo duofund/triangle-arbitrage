@@ -2,6 +2,7 @@ const WebSocket = require('ws')
 const request = require('request')
 const Exchange = require('./base/Exchange')
 const Ticker = require('./base/Ticker')
+const CurrencyCore = require('../lib/CurrencyCore')
 
 const exchangeAPI = {}
 
