@@ -39,7 +39,6 @@ module.exports = class FCoin extends Exchange {
         this.ws = new WebSocket(this.WS_URL)
 
         this.ws.on('open', conn => {
-            console.log('on ws open:', conn)
             this.wsConnect = conn
 
             this.symbols.map(topic => {
@@ -62,7 +61,7 @@ module.exports = class FCoin extends Exchange {
                     res.push(this.streams[symbol])
                 }
 
-                if (this.callbackTickerTime < 20) {
+                if (this.callbackTickerTime < 10) {
                     this.callbackTickerTime++
                     return
                 }

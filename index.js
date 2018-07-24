@@ -19,19 +19,8 @@ let ctrl = null
 let botOptions = null
 
 async function init() {
-    console.log('before init exchange')
-
     const exchange = new Exchange()
-
-    console.log('exchange obj:', exchange)
-
-    try {
-        await exchange.init()
-    } catch (e) {
-        console.error('what happened:', e)
-    }
-
-    console.log('after init exchange')
+    await exchange.init()
 
     botOptions = {
         UI: {
@@ -47,7 +36,7 @@ async function init() {
         },
         trading: {
             paperOnly: false,
-            minQueuePercentageThreshold: 0.19,
+            minQueuePercentageThreshold: 0.23,
             minHitsThreshold: 1,
             mainCoinQuantityLimit: process.env.mainCoinQuantityLimit,
             percentageOfFee: 0.05,
@@ -72,9 +61,6 @@ async function init() {
         miniQuantity: exchange.miniAmounts
     }
 
-    console.log('ctrl:', ctrl)
-
-
     const {err, db} = await DBCore(logger)
 
     if (process.env.useMongo == 'true') {
@@ -94,17 +80,11 @@ async function init() {
 
 }
 
-logger.info('\n\n\n----- Bot Starting : -----\n\n\n')
-logger.info('--- Loading Exchange API ')
-logger.info('--- \tActive Exchange:' + process.env.activeExchange)
-
-console.log('init before')
+console.log('\n\n\n----- Bot Starting : -----\n\n\n')
+console.log('--- Loading Exchange API ')
+console.log('--- \tActive Exchange:' + process.env.activeExchange)
 
 
-init().then(() => {
-    console.log('init after')
-
-    logger.info('----- Bot Startup Finished -----')
-}).catch(e => {
+init().catch(e => {
     logger.error('----- Bot Startup ERROR -----:', e)
 })
